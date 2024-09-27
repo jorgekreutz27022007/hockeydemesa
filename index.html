@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hóquei de Mesa</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            background-color: #eee;
+        }
+        #scoreboard {
+            font-size: 24px;
+            margin: 20px;
+        }
+        #timer {
+            font-size: 24px;
+            margin: 10px;
+        }
+        #gameArea {
+            position: relative;
+            width: 600px;
+            height: 400px;
+            background: linear-gradient(to bottom, #a0d3f0, #7ab4e2);
+            border: 5px solid #000;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+        .paddle {
+            position: absolute;
+            width: 10px;
+            height: 80px;
+            background-color: #333;
+            border-radius: 5px;
+        }
+        #paddle1 {
+            left: 10px;
+            top: 160px; /* Inicializa no centro vertical */
+        }
+        #paddle2 {
+            right: 10px;
+            top: 160px; /* Inicializa no centro vertical */
+        }
+        #puck {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: red;
+            border-radius: 50%;
+            left: 290px; /* Centraliza */
+            top: 190px; /* Centraliza */
+        }
+        .center-line {
+            position: absolute;
+            width: 2px;
+            height: 100%;
+            background-color: #fff;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .goal-area {
+            position: absolute;
+            width: 50px;
+            height: 100%;
+            background-color: rgba(255, 0, 0, 0.3);
+        }
+        #goal1 {
+            left: 0;
+        }
+        #goal2 {
+            right: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="scoreboard">
+        Player 1: <span id="score1">0</span> | Player 2: <span id="score2">0</span>
+    </div>
+    <div id="timer">Tempo: <span id="time">00:00</span></div>
+    <div id="gameArea">
+        <div class="goal-area" id="goal1"></div>
+        <div class="goal-area" id="goal2"></div>
+        <div class="center-line"></div>
+        <div id="paddle1" class="paddle"></div>
+        <div id="paddle2" class="paddle"></div>
+        <div id="puck"></div>
+    </div>
+    <script>
+        const gameArea = document.getElementById('gameArea');
+        const paddle1 = document.getElementById('paddle1');
+        const paddle2 = document.getElementById('paddle2');
+        const puck = document.getElementById('puck');
+        const score1Display = document.getElementById('score1');
+        const score2Display = document.getElementById('score2');
+        const timeDisplay = document.getElementById('time');
+
+        let puckSpeedX = 2; // A bolinha começa em movimento em direção ao jogador 1
+        let puckSpeedY = 2;
+        const paddleSpeed = 10;
+        const keys = {};
+        let score1 = 0;
+        let score2 = 0;
+        let seconds = 0;
+
+        document.addEventListener('keydown', (event) => {
+            keys[event.key] = true;
+        });
+
+        document.addEventListener('keyup', (event) => {
+            keys[event.key] = false;
+        });
+
+        function movePaddles() {
+            // Movimentação do jogador 1 (WASD)
+            if (keys['w'] && paddle1.offsetTop > 0) {
+                paddle1.style.top = `${paddle1.offsetTop - paddleSpeed}px`;
+            }
+            if (keys['s'] && paddle1.offsetTop < gameArea.clientHeight - paddle1.clientHeight) {
+                paddle1.style.top = `${paddle1.offsetTop + paddleSpeed}px`;
+            }
+            // Movimentação do jogador 2 (setas)
+            if (keys['ArrowUp'] && paddle2.offsetTop > 0) {
+                paddle2.style.top = `${paddle2.offsetTop - paddleSpeed}px`;
+            }
+            if (keys['ArrowDown'] && paddle2.offsetTop < gameArea.clientHeight - paddle2.clientHeight) {
+                paddle2.style.top = `${paddle2.offsetTop + paddleSpeed}px`;
+            }
+        }
+
+        function movePuck() {
+            const puckRect = puck.getBoundingClientRect();
+            const paddle1Rect = paddle1.getBoundingClientRect();
+            const paddle2Rect = paddle2.getBoundingClientRect();
+
+            // Move the puck
+            puck.style.left = `${puck.offsetLeft + puckSpeedX}px`;
+            puck.style.top = `${puck.offsetTop + puckSpeedY}px`;
+
+            // Colisão com o topo e a parte inferior
+            if (puckRect.top <= 0 || puckRect.bottom >= gameArea.clientHeight) {
+                puckSpeedY = -puckSpeedY;
+            }
+
+            // Colisão com os paddles
+            if (puckRect.left <= paddle1Rect.right && puckRect.bottom >= paddle1Rect.top && puckRect.top <= paddle1Rect.bottom) {
+                puckSpeedX = -puckSpeedX;
+            }
+            if (puckRect.right >= paddle2Rect.left && puckRect.bottom >= paddle2Rect.top && puckRect.top <= paddle2Rect.bottom) {
+                puckSpeedX = -puckSpeedX;
+            }
+
+            // Goleada e reiniciar puck
+            if (puckRect.left <= 0) {
+                score2++;
+                score2Display.textContent = score2;
+                resetPuck();
+            } else if (puckRect.right >= gameArea.clientWidth) {
+                score1++;
+                score1Display.textContent = score1;
+                resetPuck();
+            }
+
+            requestAnimationFrame(movePuck);
+        }
+
+        function resetPuck() {
+            puck.style.left = '290px';
+            puck.style.top = '190px';
+            puckSpeedX = 2; // A bolinha começa em movimento para o jogador 1
+            puckSpeedY = 2; // Velocidade padrão
+            puckSpeedX = -Math.abs(puckSpeedX); // Mover para o jogador 1
+        }
+
+        function updateTimer() {
+            seconds++;
+            const minutes = Math.floor(seconds / 60);
+            const displaySeconds = seconds % 60;
+            timeDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(displaySeconds).padStart(2, '0')}`;
+        }
+
+        function gameLoop() {
+            movePaddles();
+            movePuck();
+            requestAnimationFrame(gameLoop);
+        }
+
+        setInterval(updateTimer, 1000); // Atualiza o cronômetro a cada segundo
+        resetPuck(); // Começa com a bolinha em movimento
+        gameLoop();
+    </script>
+</body>
+</html>
